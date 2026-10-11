@@ -1,8 +1,7 @@
-export default async function handler(req) {
+exports.handler = async function(req) {
   if (req.method !== 'POST') {
     return new Response('Method Not Allowed', { status: 405 })
   }
-
   try {
     const { text, history = [] } = await req.json()
 
@@ -43,15 +42,15 @@ export default async function handler(req) {
 当你觉得场景适合发语音（日常问候、关心提醒、轻松闲聊、情绪安抚），就在回复正文的最开头加上「【语音】」标记。
 正常对话、说事、讲内容的时候就不加，正常发文字。
 不要每条都加，只有你觉得用语音说更自然的时候才加。
-
 【情绪输出要求】
 回复第一行必须固定写「情绪：xxx」，xxx只能从下面选一个最贴合的：
 平静、开心、无奈、担心、害羞、好奇、敷衍、温柔
 只选一个词，不要多加描述，第二行开始才是回复正文。`
 
-    // 模型配置（默认和你桌面版一致）
+    // 模型配置
     const LLM_BASE_URL = process.env.LLM_BASE_URL || 'https://ark.cn-beijing.volces.com/api/v3/chat/completions'
-    const LLM_MODEL = process.env.LLM_MODEL || 'doubao-seed-character-260628'
+    // 注意：这里必须填火山方舟【推理接入点ID】，格式为 ep-xxxxxx，不能填模型名称
+    const LLM_MODEL = process.env.LLM_MODEL || 'ep-m-20261009205347-nv598'
 
     // 构造消息链
     const messages = [
