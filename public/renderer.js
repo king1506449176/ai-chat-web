@@ -494,7 +494,7 @@ messageList.addEventListener('scroll', throttle(() => {
     isAtBottom = messageList.scrollHeight - messageList.scrollTop - messageList.clientHeight < 20
 }, 100))
 
-// ========== 发送消息（网页端流式版） ==========
+// ========== 发送消息（适配非流式JSON返回） ==========
 async function sendMessage() {
     const text = messageInput.value.trim()
     if (!text) return
@@ -502,11 +502,9 @@ async function sendMessage() {
     appendMessage('user', text, new Date())
     messageInput.value = ''
     messageInput.style.height = 'auto'
-
     // 显示打字状态
     showTyping()
     headerStatus.textContent = '正在输入中…'
-
     try {
         const response = await fetch('/.netlify/functions/chat', {
             method: 'POST',
@@ -516,35 +514,25 @@ async function sendMessage() {
                 history: localChatHistory.slice(-10) 
             })
         })
-
         if (!response.ok) throw new Error('请求失败')
 
-        const reader = response.body.getReader()
-        const decoder = new TextDecoder()
-        let fullText = ''
+        // 直接解析JSON返回，替换原来的流式读取
+        const data = await response.json()
+        let fullText = data.reply
+
         let isVoice = false
         const voiceMarks = ['【语音】', '[语音]', '（发语音）', '(发语音)', '【发语音】', '[发语音]']
-
-        while (true) {
-            const { done, value } = await reader.read()
-            if (done) break
-            fullText += decoder.decode(value, { stream: true })
-
-            // 实时判断是否语音消息
-            if (!isVoice) {
-                for (const mark of voiceMarks) {
-                    if (fullText.startsWith(mark)) {
-                        isVoice = true
-                        break
-                    }
-                }
+        // 判断是否语音消息
+        for (const mark of voiceMarks) {
+            if (fullText.startsWith(mark)) {
+                isVoice = true
+                break
             }
         }
 
         // 消息接收完成
         hideTyping()
         headerStatus.textContent = '在线'
-
         // 渲染消息
         let cleanText = fullText
         if (isVoice) {
@@ -558,7 +546,6 @@ async function sendMessage() {
         } else {
             appendMessage('ai', cleanText, new Date())
         }
-
         // 更新会话预览
         const lastMsg = messageList.lastElementChild
         const lastBubble = lastMsg?.querySelector('.msg-bubble')
@@ -568,7 +555,6 @@ async function sendMessage() {
                 convPreview.textContent = lastBubble.classList.contains('voice-bubble') ? '[语音]' : lastBubble.textContent.slice(0, 15)
             }
         }
-
     } catch (e) {
         hideTyping()
         headerStatus.textContent = '在线'
