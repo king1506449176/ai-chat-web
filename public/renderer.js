@@ -212,7 +212,7 @@ function playVoiceBubble(base64, bubble) {
 
 // 调用网页端TTS接口工具函数
 async function fetchTTS(text, emotion) {
-    const res = await fetch('/api/tts', {
+    const res = await fetch('/.netlify/functions/tts', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({ text, emotion })
@@ -508,7 +508,7 @@ async function sendMessage() {
     headerStatus.textContent = '正在输入中…'
 
     try {
-        const response = await fetch('/api/chat', {
+        const response = await fetch('/.netlify/functions/chat', {
             method: 'POST',
             headers: { 'Content-Type': 'application/json' },
             body: JSON.stringify({ 

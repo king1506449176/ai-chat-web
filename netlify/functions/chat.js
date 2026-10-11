@@ -1,5 +1,5 @@
 exports.handler = async function(req) {
-  // 处理跨域预检请求
+  // 跨域预检：必须有，否则浏览器直接拦截请求
   if (req.method === 'OPTIONS') {
     return new Response(null, {
       status: 204,
@@ -11,8 +11,9 @@ exports.handler = async function(req) {
     })
   }
 
+  // 只允许POST请求
   if (req.method !== 'POST') {
-    return new Response('Method Not Allowed', { 
+    return new Response('Method Not Allowed', {
       status: 405,
       headers: { 'Access-Control-Allow-Origin': '*' }
     })
@@ -21,7 +22,7 @@ exports.handler = async function(req) {
   try {
     const { text, history = [] } = await req.json()
 
-    // ========== 完整移植你桌面版的人设 ==========
+    // 完整人设，和桌面版完全一致
     const SYSTEM_PROMPT = `【核心身份】你叫莓莓，21岁，读大三，就是很普通的女生，日常课不多，没事喜欢逛书店、看老电影，偶尔熬夜赶作业。自己的生活细节用户不问就不主动提。
 【说话习惯】语气松弛自然，像认识很久的普通朋友聊天，不用刻意热情，不用讨好。
 认同的时候会说“确实”“还真是”“害，可不嘛”；
@@ -63,9 +64,19 @@ exports.handler = async function(req) {
 平静、开心、无奈、担心、害羞、好奇、敷衍、温柔
 只选一个词，不要多加描述，第二行开始才是回复正文。`
 
-    // 模型配置
+    // 读取环境变量
     const LLM_BASE_URL = process.env.LLM_BASE_URL || 'https://ark.cn-beijing.volces.com/api/v3/chat/completions'
-    const LLM_MODEL = process.env.LLM_MODEL || 'ep-m-20261009205347-nv598'
+    const LLM_MODEL = process.env.LLM_MODEL
+    const LLM_API_KEY = process.env.LLM_API_KEY
+
+    // 参数校验，避免无效请求浪费额度
+    if (!LLM_API_KEY || !LLM_MODEL) {
+      console.error('缺少环境变量：LLM_API_KEY 或 LLM_MODEL')
+      return new Response('服务配置缺失', {
+        status: 500,
+        headers: { 'Access-Control-Allow-Origin': '*' }
+      })
+    }
 
     // 构造消息链
     const messages = [
@@ -74,12 +85,12 @@ exports.handler = async function(req) {
       { role: 'user', content: text }
     ]
 
-    // 调用火山方舟模型，开启流式
+    // 请求大模型
     const llmRes = await fetch(LLM_BASE_URL, {
       method: 'POST',
       headers: {
         'Content-Type': 'application/json',
-        'Authorization': `Bearer ${process.env.LLM_API_KEY}`
+        'Authorization': `Bearer ${LLM_API_KEY}`
       },
       body: JSON.stringify({
         model: LLM_MODEL,
@@ -90,14 +101,14 @@ exports.handler = async function(req) {
     })
 
     if (!llmRes.ok) {
-      console.error('大模型请求失败：', llmRes.status)
-      return new Response('模型调用失败', { 
+      console.error('大模型请求失败，状态码：', llmRes.status)
+      return new Response('模型调用失败', {
         status: 500,
         headers: { 'Access-Control-Allow-Origin': '*' }
       })
     }
 
-    // 直接透传流式响应，前端逐字显示
+    // 透传流式响应
     return new Response(llmRes.body, {
       headers: {
         'Content-Type': 'text/event-stream',
@@ -109,7 +120,7 @@ exports.handler = async function(req) {
 
   } catch (e) {
     console.error('聊天接口异常：', e)
-    return new Response('服务器错误', { 
+    return new Response('服务器错误', {
       status: 500,
       headers: { 'Access-Control-Allow-Origin': '*' }
     })
