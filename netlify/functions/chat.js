@@ -1,7 +1,23 @@
 exports.handler = async function(req) {
-  if (req.method !== 'POST') {
-    return new Response('Method Not Allowed', { status: 405 })
+  // 处理跨域预检请求
+  if (req.method === 'OPTIONS') {
+    return new Response(null, {
+      status: 204,
+      headers: {
+        'Access-Control-Allow-Origin': '*',
+        'Access-Control-Allow-Headers': 'Content-Type',
+        'Access-Control-Allow-Methods': 'POST, OPTIONS'
+      }
+    })
   }
+
+  if (req.method !== 'POST') {
+    return new Response('Method Not Allowed', { 
+      status: 405,
+      headers: { 'Access-Control-Allow-Origin': '*' }
+    })
+  }
+
   try {
     const { text, history = [] } = await req.json()
 
@@ -49,7 +65,6 @@ exports.handler = async function(req) {
 
     // 模型配置
     const LLM_BASE_URL = process.env.LLM_BASE_URL || 'https://ark.cn-beijing.volces.com/api/v3/chat/completions'
-    // 注意：这里必须填火山方舟【推理接入点ID】，格式为 ep-xxxxxx，不能填模型名称
     const LLM_MODEL = process.env.LLM_MODEL || 'ep-m-20261009205347-nv598'
 
     // 构造消息链
@@ -76,7 +91,10 @@ exports.handler = async function(req) {
 
     if (!llmRes.ok) {
       console.error('大模型请求失败：', llmRes.status)
-      return new Response('模型调用失败', { status: 500 })
+      return new Response('模型调用失败', { 
+        status: 500,
+        headers: { 'Access-Control-Allow-Origin': '*' }
+      })
     }
 
     // 直接透传流式响应，前端逐字显示
@@ -84,12 +102,16 @@ exports.handler = async function(req) {
       headers: {
         'Content-Type': 'text/event-stream',
         'Cache-Control': 'no-cache',
-        'Connection': 'keep-alive'
+        'Connection': 'keep-alive',
+        'Access-Control-Allow-Origin': '*'
       }
     })
 
   } catch (e) {
     console.error('聊天接口异常：', e)
-    return new Response('服务器错误', { status: 500 })
+    return new Response('服务器错误', { 
+      status: 500,
+      headers: { 'Access-Control-Allow-Origin': '*' }
+    })
   }
 }
